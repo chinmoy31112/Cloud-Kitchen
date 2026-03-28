@@ -1,0 +1,88 @@
+# CookGPT - Cloud Kitchen Management System Walkthrough
+
+## Overview
+Built a comprehensive **Cloud Kitchen Management System API** using Django REST Framework with clean architecture and repository pattern. The API supports 3 user roles (Customer, Kitchen Admin, Delivery Agent) with 50 endpoints across 9 modules.
+
+## Architecture
+
+```mermaid
+graph TD
+    A["Presentation Layer<br/>(Views + Serializers)"] --> B["Application Layer<br/>(Services)"]
+    B --> C["Domain Layer<br/>(Entities + DTOs + Interfaces)"]
+    B --> D["Infrastructure Layer<br/>(Repositories + Models)"]
+    D --> C
+```
+
+## Project Structure
+
+| Layer | Path | Contents |
+|---|---|---|
+| **Domain** | `domain/` | 8 entities, 8 DTOs, 8 repository interfaces |
+| **Application** | `application/` | 9 service interfaces, 9 service implementations |
+| **Infrastructure** | `infrastructure/` | 13 Django ORM models, 8 concrete repositories |
+| **Presentation** | `presentation/` | 30+ serializers, 50 API endpoints, role-based permissions |
+
+## API Endpoints (50 total)
+
+| Module | Endpoints | Key Operations |
+|---|---|---|
+| **Authentication** | 4 | Register, Login, Logout, Refresh Token |
+| **Users** | 8 | Profile CRUD, Addresses, Change Password, List Users |
+| **Menu** | 9 | Items CRUD, Categories, Image Upload, Search/Filter |
+| **Orders** | 5 | Place Order, My Orders, All Orders, Update Status |
+| **Cart** | 5 | Get Cart, Add/Remove/Update Items, Clear |
+| **Payments** | 4 | Create, Get by ID/Order, Update Status |
+| **Delivery** | 6 | Assign, Track, Update Status/Location, My Deliveries |
+| **AI Bot** | 3 | Recipe Recommendations, History, Popular Ingredients |
+| **Dashboard** | 6 | Stats, Sales Report, Popular Items, Kitchen Timers, Predictions |
+
+## Key Features Implemented
+- 🔐 **JWT Authentication** with HTTP-only cookie storage (24hr access / 7day refresh)
+- 👥 **Role-based access control** (Customer, Kitchen Admin, Delivery Agent)
+- 🤖 **AI Recipe Engine** with 12 built-in recipes, synonym matching, and scoring
+- 📊 **Redis caching** for menu items, categories, and dashboard stats
+- 🚚 **Real-time delivery tracking** with GPS coordinates
+- ⏱️ **Kitchen Display System** (KDS) timers
+- 📈 **Analytics dashboard** with sales reports and demand predictions
+
+## Verification
+
+### Migrations - ✅ Passed
+All 13 models created successfully with Django migrations.
+
+### Server Running - ✅ Passed
+Django dev server running at `http://127.0.0.1:8000/` with StatReloader.
+
+### Swagger UI - ✅ Passed (50 endpoints)
+
+![Swagger UI showing all API endpoints](C:\Users\chinm\.gemini\antigravity\brain\3c40d4c4-89e2-4348-ad6e-a19887d5c405\swagger_ui_full_1772985601895.png)
+
+## Database
+
+### SQLite (development)
+Auto-created via Django migrations - working ✅
+
+### SQL Server Script
+Full production-ready script at [database_script.sql](file:///c:/Users/chinm/Downloads/HACK/COOKgptAPI/database_script.sql):
+- 13 tables with proper constraints, indexes, and foreign keys
+- 4 analytical views (Order Summary, Dashboard Stats, Popular Items, Daily Sales)
+- 8 default food categories pre-seeded
+
+## How to Run
+
+```bash
+# 1. Activate virtual environment
+.\venv\Scripts\activate
+
+# 2. Run migrations
+python manage.py migrate
+
+# 3. Create admin user
+python manage.py createsuperuser
+
+# 4. Start server
+python manage.py runserver 8000
+
+# 5. Open Swagger UI
+# http://127.0.0.1:8000/swagger/
+```
