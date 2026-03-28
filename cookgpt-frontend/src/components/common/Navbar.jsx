@@ -66,6 +66,7 @@ const Navbar = () => {
         <Link to="/menu" style={getLinkStyles('/menu')}>Menu</Link>
         <Link to="/cart" style={getLinkStyles('/cart')}>Cart</Link>
         <Link to="/orders" style={getLinkStyles('/orders')}>Orders</Link>
+        <Link to="/cookgpt" style={{...getLinkStyles('/cookgpt'), color: 'var(--primary-color)', fontWeight: 'bold'}}>🤖 CookGPT</Link>
         
         {/* Auth Links */}
         <div style={{ display: 'flex', gap: '1rem', marginLeft: '1rem', alignItems: 'center' }}>

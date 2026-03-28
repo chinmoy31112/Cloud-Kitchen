@@ -9,6 +9,7 @@ import Cart from './pages/customer/Cart';
 import Checkout from './pages/customer/Checkout';
 import Orders from './pages/customer/Orders';
 import OrderTrack from './pages/customer/OrderTrack';
+import CookGPT from './pages/customer/CookGPT';
 
 import Dashboard from './pages/admin/Dashboard';
 import KdsOrders from './pages/admin/KdsOrders';
@@ -31,6 +32,7 @@ function App() {
           <Route path="/checkout" element={<Checkout />} />
           <Route path="/orders" element={<Orders />} />
           <Route path="/orders/:id/track" element={<OrderTrack />} />
+          <Route path="/cookgpt" element={<CookGPT />} />
           
           {/* Admin Routes */}
           <Route path="/admin" element={<Dashboard />} />
