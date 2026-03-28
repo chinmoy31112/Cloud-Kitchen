@@ -133,9 +133,9 @@ const Cart = () => {
                 <span>Total</span>
                 <span style={{ color: 'var(--primary-color)' }}>₹{totalPrice.toFixed(2)}</span>
               </div>
-              <button style={{ width: '100%', padding: '1rem', fontSize: '1.1rem' }}>
+              <Link to="/checkout" className="btn" style={{ width: '100%', padding: '1rem', fontSize: '1.1rem', textAlign: 'center' }}>
                 Proceed to Checkout
-              </button>
+              </Link>
             </div>
           </div>
         )}

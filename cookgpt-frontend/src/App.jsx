@@ -6,6 +6,9 @@ import Register from './pages/auth/Register';
 import Profile from './pages/profile/Profile';
 import Menu from './pages/customer/Menu';
 import Cart from './pages/customer/Cart';
+import Checkout from './pages/customer/Checkout';
+import Orders from './pages/customer/Orders';
+import OrderTrack from './pages/customer/OrderTrack';
 
 function App() {
   return (
@@ -19,9 +22,9 @@ function App() {
           
           <Route path="/menu" element={<Menu />} />
           <Route path="/cart" element={<Cart />} />
-          
-          {/* Placeholder route for orders */}
-          <Route path="/orders" element={<Home />} />
+          <Route path="/checkout" element={<Checkout />} />
+          <Route path="/orders" element={<Orders />} />
+          <Route path="/orders/:id/track" element={<OrderTrack />} />
         </Routes>
       </AuthProvider>
     </Router>
