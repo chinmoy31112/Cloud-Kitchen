@@ -147,21 +147,22 @@ const CookGPT = () => {
         const userMessage = (text || inputValue).trim();
         if (!userMessage || isTyping) return;
 
-        // Add user message to the conversation
-        const newMessages = [...messages, { role: 'user', content: userMessage }];
-        setMessages(newMessages);
+        // 1. Add both user message AND an empty assistant message to the state atomically
+        // This ensures the conversation history is correctly preserved before any async actions.
+        setMessages(prev => [
+            ...prev, 
+            { role: 'user', content: userMessage },
+            { role: 'assistant', content: '' } 
+        ]);
+        
         setInputValue('');
         setIsTyping(true);
-        isUserScrolledUp.current = false; // Force scroll down when sending a new message
+        isUserScrolledUp.current = false;
 
-        // We don't add the empty assistant message here anymore.
-        // The typing indicator will show until the first chunk arrives.
         try {
-            // Build conversation history (exclude current message)
-            const history = newMessages.slice(0, -1).map(m => ({
-                role: m.role,
-                content: m.content
-            }));
+            // Build conversation history for the AI (all messages except the two we just added)
+            // We use a functional update style here to ensure we have the absolute latest state
+            const history = messages.map(m => ({ role: m.role, content: m.content }));
 
             const token = localStorage.getItem('access_token');
             const response = await fetch('http://127.0.0.1:8000/api/v1/ai/chat/', {
@@ -177,78 +178,67 @@ const CookGPT = () => {
             });
 
             if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('AUTH');
-                }
+                if (response.status === 401) throw new Error('AUTH');
                 throw new Error('NETWORK');
             }
 
             const reader = response.body.getReader();
             const decoder = new TextDecoder();
             let fullText = '';
-            let hasAddedMessage = false;
 
             while (true) {
                 const { done, value } = await reader.read();
                 if (done) break;
 
                 const raw = decoder.decode(value, { stream: true });
-                // Parse SSE lines
                 const lines = raw.split('\n');
+                
                 for (const line of lines) {
                     if (line.startsWith('data: ')) {
                         const data = line.slice(6);
                         if (data === '[DONE]') break;
 
-                        // Stop the typing indicator dots as soon as real text starts arriving
                         if (isTyping) setIsTyping(false);
 
-                        // Each "data:" line is a line of text; reassemble with newlines
                         fullText += data + '\n';
-                        // Update the assistant message in real-time
+                        
+                        // Update only the last message (the assistant one we created at the start)
                         setMessages(prev => {
-                            if (!hasAddedMessage) {
-                                hasAddedMessage = true;
-                                return [...prev, { role: 'assistant', content: fullText.trimEnd() }];
-                            } else {
-                                const updated = [...prev];
-                                updated[updated.length - 1] = { role: 'assistant', content: fullText.trimEnd() };
-                                return updated;
+                            const updated = [...prev];
+                            if (updated.length > 0) {
+                                updated[updated.length - 1] = { 
+                                    ...updated[updated.length - 1], 
+                                    content: fullText.trimEnd() 
+                                };
                             }
+                            return updated;
                         });
                     }
                 }
             }
 
-            // If we got nothing, show a fallback
+            // Fallback for empty responses
             if (!fullText.trim()) {
                 setMessages(prev => {
-                    if (!hasAddedMessage) {
-                        return [...prev, { role: 'assistant', content: "I couldn't process that. Please try again." }];
-                    } else {
-                        const updated = [...prev];
-                        updated[updated.length - 1] = { role: 'assistant', content: "I couldn't process that. Please try again." };
-                        return updated;
-                    }
+                    const updated = [...prev];
+                    updated[updated.length - 1].content = "I'm ready to help! What's on your mind?";
+                    return updated;
                 });
             }
 
         } catch (err) {
             let errorMsg = "Something went wrong. Please try again.";
-            if (err.message === 'AUTH') {
-                errorMsg = "Please sign in to use CookGPT AI.";
-            }
+            if (err.message === 'AUTH') errorMsg = "Please sign in to use CookGPT AI.";
+            
             setMessages(prev => {
-                // If it failed before we ever created the message bubble, append one
-                // Otherwise update the last one (which would be the incomplete stream)
-                const lastMsg = prev[prev.length - 1];
-                if (!lastMsg || lastMsg.role !== 'assistant') {
-                    return [...prev, { role: 'assistant', content: errorMsg }];
+                const updated = [...prev];
+                // Ensure we update the last assistant message with the error
+                if (updated.length > 0 && updated[updated.length - 1].role === 'assistant') {
+                    updated[updated.length - 1].content = errorMsg;
                 } else {
-                    const updated = [...prev];
-                    updated[updated.length - 1] = { role: 'assistant', content: errorMsg };
-                    return updated;
+                    updated.push({ role: 'assistant', content: errorMsg });
                 }
+                return updated;
             });
         } finally {
             setIsTyping(false);
@@ -417,7 +407,7 @@ const CookGPT = () => {
                                 maxWidth: '520px', lineHeight: '1.7', fontWeight: '300',
                                 marginBottom: '2.5rem'
                             }}>
-                                How can I help you today? Ask me about cooking, recipes, nutrition & food-related health.
+                                I help you about cooking, recipes, nutrition & food-related health.
                             </p>
 
                             {/* Suggestion Chips */}
@@ -486,30 +476,35 @@ const CookGPT = () => {
                                     {isUser ? (
                                         <span>{msg.content}</span>
                                     ) : (
-                                        <div
-                                            dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
-                                            style={{ lineHeight: '1.8' }}
-                                        />
+                                        msg.content === '' ? (
+                                            <div className="typing-dots" style={{ display: 'flex', gap: '4px', padding: '4px 0' }}>
+                                                <div className="dot"></div>
+                                                <div className="dot"></div>
+                                                <div className="dot"></div>
+                                            </div>
+                                        ) : (
+                                            <div
+                                                dangerouslySetInnerHTML={{ __html: renderMarkdown(msg.content) }}
+                                                style={{ lineHeight: '1.8' }}
+                                            />
+                                        )
                                     )}
                                 </div>
 
-                                {/* User Avatar */}
                                 {isUser && (
                                     <div style={{
                                         width: '32px', height: '32px', borderRadius: '50%',
                                         background: 'var(--bg-color)',
                                         border: '1px solid var(--border-color)',
                                         display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'var(--text-secondary)', fontSize: '0.75rem', fontWeight: '600',
+                                        color: 'var(--text-primary)', fontSize: '0.7rem', fontWeight: '700',
                                         flexShrink: 0, marginTop: '4px'
-                                    }}>You</div>
+                                    }}>U</div>
                                 )}
                             </div>
                         );
                     })}
 
-                    {/* Typing Indicator */}
-                    {isTyping && <TypingIndicator />}
 
                     <div ref={messagesEndRef} />
                 </div>
