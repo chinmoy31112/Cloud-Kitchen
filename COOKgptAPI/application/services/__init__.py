@@ -5,6 +5,9 @@ Business logic for all CookGPT services.
 from typing import Optional, List
 from datetime import date, timedelta
 from django.core.cache import cache
+import google.generativeai as genai
+import json
+import os
 
 from application.interfaces import (
     IAuthService, IUserService, IMenuService, IOrderService,
@@ -488,6 +491,11 @@ class AIService(IAIService):
 
     def __init__(self):
         self.ai_repo = DjangoAIRepository()
+        # Pull Gemini API key from environment variable for security
+        self.api_key = os.environ.get("GEMINI_API_KEY", "DUMMY_KEY_FOR_LOCAL_DEV")
+        genai.configure(api_key=self.api_key)
+        # Use Gemma 4 31B model
+        self.model = genai.GenerativeModel('gemma-4-31b-it')
 
     def _normalize_ingredient(self, ingredient: str) -> str:
         """Normalize ingredient name using synonyms."""
@@ -503,30 +511,87 @@ class AIService(IAIService):
         return len(matches) / len(recipe_set)
 
     def recommend_recipes(self, user_id: int, ingredients: list) -> dict:
-        # Normalize user ingredients
-        normalized = {self._normalize_ingredient(i) for i in ingredients}
+        """
+        Generate recipe recommendations using Google Gemini AI.
+        """
+        try:
+            # Create a prompt for Gemini to generate recipe recommendations
+            ingredients_str = ", ".join(ingredients)
+            prompt = f"""You are a professional chef and culinary expert. Based on the following ingredients: {ingredients_str}
 
-        # Score each recipe
-        scored_recipes = []
-        for recipe in self.RECIPE_DATABASE:
-            score = self._calculate_match_score(normalized, recipe['ingredients'])
-            if score >= 0.3:  # At least 30% match
-                recipe_data = {**recipe, 'match_score': round(score * 100, 1)}
-                scored_recipes.append(recipe_data)
+Please generate 5 creative and delicious recipe recommendations. For each recipe, provide a JSON object with the following structure:
+{{
+    "name": "Recipe Name",
+    "description": "Brief description of the dish",
+    "ingredients": ["ingredient1", "ingredient2", ...],
+    "instructions": ["step1", "step2", ...],
+    "preparation_time": number_in_minutes,
+    "cooking_time": number_in_minutes,
+    "servings": number,
+    "difficulty": "easy/medium/hard",
+    "cuisine": "cuisine_type",
+    "why_this_recipe": "Why this recipe works with your ingredients"
+}}
 
-        # Sort by match score (highest first)
-        scored_recipes.sort(key=lambda r: r['match_score'], reverse=True)
-        top_recipes = scored_recipes[:5]
+Return ONLY a JSON array with 5 recipe objects, no additional text or markdown formatting. Start with [ and end with ].
+"""
+            
+            # Call Gemini API
+            response = self.model.generate_content(prompt)
+            
+            # Parse the response
+            response_text = response.text.strip()
+            
+            # Extract JSON from the response (in case there's extra text)
+            if response_text.startswith('['):
+                json_str = response_text[:response_text.rfind(']')+1]
+            else:
+                json_str = response_text[response_text.find('['):response_text.rfind(']')+1]
+            
+            recommended_recipes = json.loads(json_str)
+            
+            # Ensure we have a list and limit to 5 recipes
+            if not isinstance(recommended_recipes, list):
+                recommended_recipes = [recommended_recipes]
+            recommended_recipes = recommended_recipes[:5]
+            
+            # Save to database for future reference
+            saved = self.ai_repo.save_query(user_id, ingredients, recommended_recipes)
+            
+            return {
+                'id': saved['id'],
+                'input_ingredients': ingredients,
+                'recommended_recipes': recommended_recipes,
+                'total_matches': len(recommended_recipes),
+            }
+        
+        except Exception as e:
+            # Fallback to the hardcoded recipe database if Gemini fails
+            print(f"Gemini API Error: {str(e)}")
+            # Normalize user ingredients
+            normalized = {self._normalize_ingredient(i) for i in ingredients}
 
-        # Save to database for future reference
-        saved = self.ai_repo.save_query(user_id, ingredients, top_recipes)
+            # Score each recipe
+            scored_recipes = []
+            for recipe in self.RECIPE_DATABASE:
+                score = self._calculate_match_score(normalized, recipe['ingredients'])
+                if score >= 0.3:  # At least 30% match
+                    recipe_data = {**recipe, 'match_score': round(score * 100, 1)}
+                    scored_recipes.append(recipe_data)
 
-        return {
-            'id': saved['id'],
-            'input_ingredients': ingredients,
-            'recommended_recipes': top_recipes,
-            'total_matches': len(scored_recipes),
-        }
+            # Sort by match score (highest first)
+            scored_recipes.sort(key=lambda r: r['match_score'], reverse=True)
+            top_recipes = scored_recipes[:5]
+
+            # Save to database for future reference
+            saved = self.ai_repo.save_query(user_id, ingredients, top_recipes)
+
+            return {
+                'id': saved['id'],
+                'input_ingredients': ingredients,
+                'recommended_recipes': top_recipes,
+                'total_matches': len(scored_recipes),
+            }
 
     def get_history(self, user_id: int) -> List[dict]:
         return self.ai_repo.get_history(user_id)

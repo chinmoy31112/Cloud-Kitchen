@@ -2,7 +2,8 @@
 
 CookGPT is an enterprise-grade, localized Cloud Kitchen platform. It was architected to seamlessly bridge the gap between hungry **Customers**, busy **Kitchen Chefs**, and constantly moving **Delivery Riders** via a centralized, real-time command center.
 
-This repository is split into a robust **Django REST framework backend** and a visually stunning **Vite + React frontend** utilizing custom glassmorphism, responsive native layouts, and secure role-based JWT authentication.
+### ✨ Premium Aesthetic
+The platform features a **High Society Premium Light Theme**, utilizing elegant **Playfair Display** typography, champagne-gold accents, and a refined glassmorphism design system to provide an elite culinary experience.
 
 ---
 
@@ -10,8 +11,13 @@ This repository is split into a robust **Django REST framework backend** and a v
 
 - **Backend API**: Python 3, Django, Django REST Framework, SQLite (Development), Swagger (drf-yasg).
 - **Frontend SPA**: Vite, React 18, React Router DOM, Axios.
-- **Security**: Stateless JSON Web Tokens (`djangorestframework-simplejwt`), User Role Access Control lists (`IsKitchenAdmin`, `IsDeliveryRider`).
-- **Intelligence**: Offline local-heuristic text matching for the 'CookGPT' recipe generator (0 API calls required).
+- **Security**: 
+    - Stateless JSON Web Tokens (`djangorestframework-simplejwt`).
+    - User Role Access Control lists (`IsKitchenAdmin`, `IsDeliveryRider`).
+    - **Environment Protection**: Sensitive keys (Gemini API, Django Secret Key) are managed via `python-dotenv`.
+- **Intelligence**: 
+    - **Bespoke AI**: Integrated with Google Gemini (via `google-generativeai`) for high-end recipe curation.
+    - Offline local-heuristic fallback matching.
 
 ---
 
@@ -20,7 +26,7 @@ This repository is split into a robust **Django REST framework backend** and a v
 ### 1. The Customer App (`/`, `/menu`, `/cart`, `/cookgpt`)
 *   **Secure Cart Logic**: Stores cart states inside browser local storage synced against the API upon authenticated checkout.
 *   **Live Order Tracking**: After checkout (`/checkout`), the portal automatically initiates a polling loop (`setInterval`) requesting the `GET /api/v1/orders/` endpoint every 15 seconds to drive a CSS-animated visual status bar.
-*   **🤖 CookGPT AI**: A localized conversational recommendation UI that scans available ingredients and utilizes a Math Heuristic to return visually structured Recipe Cards.
+*   **🤖 Bespoke AI (CookGPT)**: A luxury conversational recommendation UI that scans available ingredients and utilizes Gemini AI to return visually structured Recipe Cards.
 
 ### 2. The Kitchen Admin Command Center (`/admin`)
 *   **Role Protection**: Only users authenticated as `kitchen_admin` can load these routes. Generic logins receive a `403 Forbidden` wall.
@@ -48,6 +54,7 @@ Cloude Kitchen/
 │   ├── domain/              # Entities, rules, and repositories
 │   ├── infrastructure/      # Database models & ORM migrations
 │   ├── presentation/        # API Views and API Url mapping
+│   ├── .env.example         # Template for environment variables
 │   ├── manage.py           
 │   ├── seed_menu.py         # Scripts to hydrate the Database
 │   └── create_rider.py      # Automated testing scripts
@@ -73,8 +80,13 @@ cd "Cloude Kitchen/COOKgptAPI"
 # Activate your virtual environment (Windows)
 .\venv\Scripts\activate
 
-# Install requirements (if not already done)
+# Install requirements
 pip install -r requirements.txt
+pip install python-dotenv google-generativeai
+
+# Setup Environment Variables
+# Copy .env.example to .env and fill in your keys
+cp .env.example .env
 
 # Run migrations and seed data
 python manage.py migrate

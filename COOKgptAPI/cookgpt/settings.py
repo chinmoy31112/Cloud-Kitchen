@@ -6,10 +6,15 @@ Django Settings Configuration
 import os
 from pathlib import Path
 from datetime import timedelta
+from dotenv import load_dotenv
+
+# Load environment variables from .env file
+load_dotenv()
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 
-SECRET_KEY = 'cookgpt-secret-key-change-in-production-2026'
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = os.getenv('DJANGO_SECRET_KEY', 'cookgpt-default-insecure-key-2026')
 
 DEBUG = True
 
