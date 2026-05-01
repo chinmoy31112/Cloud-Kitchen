@@ -24,7 +24,7 @@ from presentation.api.serializers import (
     CreatePaymentSerializer, PaymentStatusSerializer, PaymentResponseSerializer,
     AssignDeliverySerializer, DeliveryStatusUpdateSerializer, DeliveryLocationSerializer,
     DeliveryResponseSerializer,
-    AIQuerySerializer, AIRecommendationResponseSerializer, AIHistorySerializer,
+    AIQuerySerializer, AIChatSerializer, AIRecommendationResponseSerializer, AIHistorySerializer,
     DashboardSerializer, SalesReportQuerySerializer, KitchenTimerSerializer, TimerStatusSerializer,
 )
 from presentation.api.permissions import (
@@ -774,6 +774,41 @@ def ai_popular_ingredients(request):
     ai_service = AIService()
     ingredients = ai_service.get_popular_ingredients()
     return Response({'success': True, 'data': ingredients})
+
+
+@swagger_auto_schema(method='post', request_body=AIChatSerializer,
+                     operation_description="Chat with the CookGPT AI assistant. Returns a streaming SSE response for real-time display.",
+                     tags=['AI Bot'])
+@api_view(['POST'])
+@permission_classes([IsAuthenticated])
+def ai_chat(request):
+    """Streaming conversational chat with CookGPT AI via Server-Sent Events."""
+    serializer = AIChatSerializer(data=request.data)
+    serializer.is_valid(raise_exception=True)
+
+    ai_service = AIService()
+    message = serializer.validated_data['message']
+    history = serializer.validated_data.get('conversation_history', [])
+
+    def event_stream():
+        try:
+            for chunk in ai_service.stream_chat(request.user.id, message, history):
+                # SSE format: data: <text>\n\n
+                # Escape newlines inside the chunk for SSE protocol
+                for line in chunk.split('\n'):
+                    yield f"data: {line}\n"
+                yield "\n"  # End of this SSE event
+            # Send a final [DONE] signal
+            yield "data: [DONE]\n\n"
+        except Exception as e:
+            yield f"data: Error: {str(e)}\n\n"
+            yield "data: [DONE]\n\n"
+
+    from django.http import StreamingHttpResponse
+    response = StreamingHttpResponse(event_stream(), content_type='text/event-stream')
+    response['Cache-Control'] = 'no-cache'
+    response['X-Accel-Buffering'] = 'no'
+    return response
 
 
 # ════════════════════════════════════════════════════════════════════════════

@@ -8,15 +8,7 @@ const BaseLayout = ({ children }) => {
       <main className="page-container">
         {children}
       </main>
-      <footer style={{
-        textAlign: 'center',
-        padding: '2rem',
-        color: 'var(--text-secondary)',
-        marginTop: 'auto',
-        borderTop: '1px solid var(--border-color)'
-      }}>
-        <p>&copy; 2026 CookGPT Cloud Kitchen. All rights reserved.</p>
-      </footer>
+
     </>
   );
 };

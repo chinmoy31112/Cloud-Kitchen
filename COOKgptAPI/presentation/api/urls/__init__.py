@@ -21,7 +21,7 @@ from presentation.api.views import (
     assign_delivery, delivery_detail, update_delivery_status,
     update_delivery_location, track_delivery, my_deliveries,
     # AI
-    ai_recommend, ai_history, ai_popular_ingredients,
+    ai_recommend, ai_history, ai_popular_ingredients, ai_chat,
     # Dashboard
     dashboard_stats, sales_report, popular_items,
     kitchen_timers, update_kitchen_timer, demand_predictions,
@@ -94,6 +94,7 @@ delivery_urlpatterns = [
 # ─── AI Bot URLs ──────────────────────────────────────────────────────────
 ai_urlpatterns = [
     path('recommend/', ai_recommend, name='ai-recommend'),
+    path('chat/', ai_chat, name='ai-chat'),
     path('history/', ai_history, name='ai-history'),
     path('popular-ingredients/', ai_popular_ingredients, name='ai-popular-ingredients'),
 ]

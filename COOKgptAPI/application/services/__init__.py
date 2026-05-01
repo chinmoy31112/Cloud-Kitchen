@@ -599,6 +599,227 @@ Return ONLY a JSON array with 5 recipe objects, no additional text or markdown f
     def get_popular_ingredients(self) -> List[dict]:
         return self.ai_repo.get_popular_ingredients()
 
+    # ──────────── Few-Shot Examples for Conversational AI ─────────────────
+    # We use explicit few-shot examples to force the model into a direct-response format.
+    _FEW_SHOT_EXAMPLES = [
+        {'role': 'user', 'parts': ["hi"]},
+        {'role': 'model', 'parts': ["Hello! I am CookGPT. How can I help you in the kitchen today?"]},
+        {'role': 'user', 'parts': ["what can you do?"]},
+        {'role': 'model', 'parts': ["I can help you find recipes, plan meals, and give you nutrition advice. What are you craving?"]},
+    ]
+
+    @staticmethod
+    def _clean_response(text):
+        """
+        Aggressively strip any leaked internal reasoning/metadata.
+        Handles the pattern where the model outputs reasoning, then
+        writes the actual answer (sometimes duplicated).
+        """
+        import re
+        if not text:
+            return text
+
+        # ── Pattern 1: Model puts the real answer in quotes, then repeats it ──
+        # E.g.: * "Hello! ..." \n Hello! ...
+        # Find the last substantial block that isn't metadata
+        quoted_match = re.search(r'\*\s*"(.+?)"\s*\n+([\s\S]*)', text, re.DOTALL)
+        if quoted_match:
+            after_quote = quoted_match.group(2).strip()
+            if after_quote and len(after_quote) > 10:
+                return after_quote
+
+        # ── Pattern 2: Strip all lines that look like reasoning/metadata ──
+        lines = text.split('\n')
+        junk_re = re.compile(
+            r'^\s*[\*\-]?\s*('
+            r'User (said|asks?|question|input|wants)|'
+            r'Topic[:\s]|Role[:\s]|Persona[:\s]|Constraint|'
+            r'Context[:\s]|Background[:\s]|'
+            r'Expertise[:\s]|Goal[:\s]|Formatting[:\s]|'
+            r'Rules?[:\s]|'
+            r'My Role|This falls under|Output rule|'
+            r'Greeting rule|Topic Constraint|'
+            r'No internal|Follow output|No metadata|'
+            r'descriptions? of actions?|'
+            r'Reply directly|NEVER echo|NEVER write|'
+            r'\d+\.\s+Only answer about cooking|'
+            r'\d+\.\s+Off-topic:|'
+            r'\d+\.\s+Reply DIRECTLY'
+            r')',
+            re.IGNORECASE
+        )
+
+        cleaned = []
+        for line in lines:
+            stripped = line.strip()
+            # Skip junk lines
+            if junk_re.search(stripped):
+                continue
+            # Skip lines that are just bullet points with short meta-descriptions
+            if re.match(r'^\s*\*\s*(Warm|Friendly|Concise|Helpful|Professional|Enthusiastic)', stripped, re.IGNORECASE):
+                continue
+            # Skip lines like "* Offer assistance..." or "* Greet the user..."
+            if re.match(r'^\s*\*\s*(Offer|Greet|Ask what|Provide)', stripped, re.IGNORECASE):
+                continue
+            cleaned.append(line)
+
+        # Remove leading empty lines
+        while cleaned and not cleaned[0].strip():
+            cleaned.pop(0)
+
+        result = '\n'.join(cleaned).strip()
+
+        # ── Pattern 3: If result starts with a quoted version of itself ──
+        # e.g. "Hey! What's up?" \n Hey! What's up?
+        quote_dup = re.match(r'^"(.+?)"\s*\n+([\s\S]*)', result, re.DOTALL)
+        if quote_dup:
+            inner = quote_dup.group(1).strip()
+            rest = quote_dup.group(2).strip()
+            # If the rest starts with the same text, use the rest
+            if rest.startswith(inner[:20]):
+                return rest
+            # Otherwise return the unquoted version
+            return inner if len(inner) > len(rest) else rest
+
+        # ── Pattern 4: Remove leading stray bullet ──
+        result = re.sub(r'^[\*\-]\s+"?', '', result).strip()
+        result = result.strip('"').strip()
+
+        return result if result else text.strip()
+
+    def _build_contents(self, message, conversation_history):
+        """Build contents with few-shot examples + conversation history."""
+        # Start with few-shot examples that teach the model correct behavior
+        contents = list(self._FEW_SHOT_EXAMPLES)
+
+        # Add conversation history
+        for entry in conversation_history[-20:]:
+            role = entry.get('role', 'user')
+            text = entry.get('content', '')
+            if role == 'user':
+                contents.append({'role': 'user', 'parts': [text]})
+            elif role == 'assistant':
+                contents.append({'role': 'model', 'parts': [text]})
+
+        # Add the current user message
+        contents.append({'role': 'user', 'parts': [message]})
+        return contents
+
+    def _get_chat_model(self):
+        """Create a GenerativeModel with a strict system instruction."""
+        return genai.GenerativeModel(
+            'gemma-4-31b-it',
+            system_instruction=(
+                "You are CookGPT, a culinary AI. You are strictly forbidden from outputting "
+                "any internal reasoning, bullet points, asterisks (*), or lists. "
+                "Do not use the words 'User intent', 'Persona', or 'Goal'. "
+                "Respond immediately and directly to the user with no preamble."
+            )
+        )
+
+    def chat_with_ai(self, user_id: int, message: str, conversation_history: list) -> dict:
+        """Non-streaming chat — returns full response at once."""
+        try:
+            contents = self._build_contents(message, conversation_history)
+            chat_model = self._get_chat_model()
+            response = chat_model.generate_content(contents)
+            ai_reply = self._clean_response(response.text)
+            return {
+                'success': True,
+                'message': ai_reply,
+                'role': 'assistant',
+            }
+        except Exception as e:
+            print(f"CookGPT Chat Error: {str(e)}")
+            return {
+                'success': False,
+                'message': "I'm having a little trouble right now. Please try again in a moment! 🍳",
+                'role': 'assistant',
+                'error': str(e),
+            }
+
+    def stream_chat(self, user_id: int, message: str, conversation_history: list):
+        """
+        Streaming chat generator — yields cleaned text chunks.
+        Used by the SSE endpoint for real-time word-by-word display.
+        """
+        import re
+        try:
+            contents = self._build_contents(message, conversation_history)
+            chat_model = self._get_chat_model()
+            response = chat_model.generate_content(contents, stream=True)
+
+            junk_re = re.compile(
+                r'^\s*[\*\-]?\s*('
+                r'The user (said|says?|asks?|is|wants)|'
+                r'User (intent|input)[:\s]|'
+                r'CookGPT \(culinary AI\)|CookGPT:|'
+                r'Answer only about|Direct replies|No meta-commentary|No summaries|'
+                r'I (need to|should|will) (maintain|acknowledge|offer|provide|keep)|'
+                r'Previous interaction[:\s]|Personality[:\s]|Goal[:\s]|Option \d[:\s]|'
+                r'Enthusiastic, knowledgeable|'
+                r'Topic[:\s]|Role[:\s]|Persona[:\s]|Constraint|'
+                r'Context[:\s]|Background[:\s]|'
+                r'Expertise[:\s]|Formatting[:\s]|'
+                r'Rules?[:\s]|'
+                r'My Role|This falls under|Output rule|'
+                r'Greeting (rule|should)|Topic Constraint|'
+                r'No internal|Follow output|No metadata|'
+                r'descriptions? of actions?|'
+                r'Reply directly|NEVER echo|NEVER write|'
+                r'\d+\.\s+Only answer about cooking|'
+                r'\d+\.\s+Off-topic:|'
+                r'\d+\.\s+Reply DIRECTLY|'
+                r'Offer |Greet |Warm|Friendly|Concise|Helpful|'
+                r'".*?"' # Matches quoted options if it tries to list them
+                r')',
+                re.IGNORECASE
+            )
+
+            buffer = ''
+            started_real_content = False
+
+            for chunk in response:
+                if not chunk.text:
+                    continue
+
+                buffer += chunk.text
+
+                # Process complete lines from the buffer
+                while '\n' in buffer:
+                    line, buffer = buffer.split('\n', 1)
+
+                    # Skip or clean junk lines
+                    if junk_re.search(line.strip()):
+                        # Sometimes the AI appends the actual answer directly after the reasoning
+                        split_line = re.split(r'\.(?=[A-Z][a-z])', line.strip(), 1)
+                        if len(split_line) == 2 and len(split_line[1]) > 5:
+                            line = split_line[1] # Keep the actual answer part
+                        else:
+                            continue
+                    
+                    # Skip empty lines before real content starts
+                    if not started_real_content and not line.strip():
+                        continue
+                        
+                    # Skip quoted duplicates like * "Hello!"
+                    if re.match(r'^\s*\*?\s*".*"$', line.strip()):
+                        continue
+
+                    started_real_content = True
+                    yield line + '\n'
+
+            # Yield remaining buffer
+            if buffer.strip():
+                if not junk_re.search(buffer.strip()):
+                    clean = buffer.strip().strip('"').strip()
+                    if clean:
+                        yield clean
+
+        except Exception as e:
+            print(f"CookGPT Stream Error: {str(e)}")
+            yield "I'm having a little trouble right now. Please try again in a moment! 🍳"
+
 
 # ──────────────────────── Analytics Service ─────────────────────────────────
 

@@ -252,6 +252,19 @@ class AIQuerySerializer(serializers.Serializer):
     )
 
 
+class AIChatSerializer(serializers.Serializer):
+    message = serializers.CharField(
+        max_length=2000,
+        help_text="The user's message to the CookGPT AI assistant"
+    )
+    conversation_history = serializers.ListField(
+        child=serializers.DictField(),
+        required=False,
+        default=list,
+        help_text="Previous conversation messages [{role: 'user'|'assistant', content: '...'}]"
+    )
+
+
 class RecipeSerializer(serializers.Serializer):
     name = serializers.CharField()
     description = serializers.CharField()

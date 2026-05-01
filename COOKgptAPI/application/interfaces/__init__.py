@@ -175,6 +175,10 @@ class IAIService(ABC):
         pass
 
     @abstractmethod
+    def chat_with_ai(self, user_id: int, message: str, conversation_history: list) -> dict:
+        pass
+
+    @abstractmethod
     def get_history(self, user_id: int) -> List[dict]:
         pass
 
