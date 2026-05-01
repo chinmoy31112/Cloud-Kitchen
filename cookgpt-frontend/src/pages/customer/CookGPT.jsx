@@ -26,17 +26,17 @@ const renderMarkdown = (text) => {
         // Line breaks
         .replace(/\n\n/g, '<br/><br/>')
         .replace(/\n/g, '<br/>');
-        
+
     // Clean up excessive <br/> tags injected between list items
     html = html.replace(/<\/li>(?:\s*<br\s*\/?>\s*)+<li/gi, '</li>\n<li');
-    
+
     // Wrap consecutive <li> in <ul> (now without massive <br/> gaps inside)
     html = html.replace(/((?:<li[^>]*>.*?<\/li>\s*)+)/g, '<ul style="padding-left:1.4rem;margin:0.5rem 0">$1</ul>');
-    
+
     // Clean up excessive <br/> tags around headers and lists to prevent double-margins
     html = html.replace(/(?:<br\s*\/?>\s*)+(<h[1-6]|<ul)/gi, '$1');
     html = html.replace(/(<\/h[1-6]>|<\/ul>)\s*(?:<br\s*\/?>\s*)+/gi, '$1<div style="height:0.8rem"></div>');
-    
+
     return html;
 };
 
@@ -90,7 +90,7 @@ const CookGPT = () => {
         const handleMouseUp = () => {
             const activeSelection = window.getSelection();
             const text = activeSelection.toString().trim();
-            
+
             if (text && text.length > 2) {
                 const range = activeSelection.getRangeAt(0);
                 const rect = range.getBoundingClientRect();
@@ -199,7 +199,7 @@ const CookGPT = () => {
                     if (line.startsWith('data: ')) {
                         const data = line.slice(6);
                         if (data === '[DONE]') break;
-                        
+
                         // Stop the typing indicator dots as soon as real text starts arriving
                         if (isTyping) setIsTyping(false);
 
@@ -268,7 +268,7 @@ const CookGPT = () => {
         inputRef.current?.focus();
     };
 
-    const showWelcome = messages.length === 0;
+    const showWelcome = messages.length === 0 && inputValue.length === 0;
 
     return (
         <div style={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden', background: 'var(--bg-color)' }}>
@@ -407,17 +407,17 @@ const CookGPT = () => {
                         }}>
                             <h2 style={{
                                 fontFamily: "'Playfair Display', serif",
-                                fontSize: '2.5rem', color: 'var(--text-primary)',
-                                marginBottom: '1rem', fontWeight: '600'
+                                fontSize: '2rem', color: 'var(--text-primary)',
+                                marginBottom: '0.8rem', fontWeight: '600'
                             }}>
-                                Hey! I am CookGPT
+                                Hello, I'm CookGPT
                             </h2>
                             <p style={{
-                                color: 'var(--text-secondary)', fontSize: '1.1rem',
-                                maxWidth: '550px', lineHeight: '1.7', fontWeight: '300',
-                                marginBottom: '3rem'
+                                color: 'var(--text-secondary)', fontSize: '1.05rem',
+                                maxWidth: '520px', lineHeight: '1.7', fontWeight: '300',
+                                marginBottom: '2.5rem'
                             }}>
-                                Ask about cooking, recipes, nutrition & food-related health. I am here to guide your culinary journey.
+                                How can I help you today? Ask me about cooking, recipes, nutrition & food-related health.
                             </p>
 
                             {/* Suggestion Chips */}
@@ -468,21 +468,20 @@ const CookGPT = () => {
 
                                 {/* Message Bubble */}
                                 <div style={{
-                                    maxWidth: isUser ? '75%' : '85%',
-                                    padding: '1.2rem 1.8rem',
-                                    borderRadius: isUser ? '24px 24px 4px 24px' : '24px 24px 24px 4px',
+                                    maxWidth: isUser ? '75%' : '90%', // AI gets more space to read properly
+                                    padding: '1rem 1.4rem',
+                                    borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                                     background: isUser
                                         ? 'linear-gradient(135deg, var(--primary-color), var(--primary-hover))'
                                         : 'var(--surface-color)',
                                     color: isUser ? 'white' : 'var(--text-primary)',
                                     border: isUser ? 'none' : '1px solid var(--border-color)',
-                                    fontSize: '1rem',
+                                    fontSize: '0.95rem',
                                     lineHeight: '1.7',
                                     boxShadow: isUser
-                                        ? '0 10px 25px rgba(184, 144, 91, 0.2)'
+                                        ? '0 4px 15px rgba(184,144,91,0.25)'
                                         : 'var(--shadow-sm)',
-                                    wordBreak: 'break-word',
-                                    position: 'relative'
+                                    wordBreak: 'break-word'
                                 }}>
                                     {isUser ? (
                                         <span>{msg.content}</span>
@@ -581,10 +580,10 @@ const CookGPT = () => {
                     </div>
                 </div>
             </div>
-            
+
             {/* ── Ask CookGPT Premium Selection Popup ── */}
             {selection && (
-                <div 
+                <div
                     id="ask-cookgpt-popup"
                     className="premium-tooltip"
                     onMouseDown={(e) => {
@@ -602,7 +601,7 @@ const CookGPT = () => {
                     Ask CookGPT
                 </div>
             )}
-            
+
         </div>
     );
 };
