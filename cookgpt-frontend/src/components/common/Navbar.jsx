@@ -70,7 +70,7 @@ const Navbar = () => {
   return (
     <nav style={navStyles}>
       <Link to="/" style={logoStyles}>
-        <span style={logoAccent}>Cook</span>GPT
+        <span style={logoAccent}>Bespoke</span> Kitchen
       </Link>
       
       <div style={menuStyles}>
