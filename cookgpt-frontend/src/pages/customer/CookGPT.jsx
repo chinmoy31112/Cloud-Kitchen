@@ -405,19 +405,19 @@ const CookGPT = () => {
                             textAlign: 'center', padding: '2rem 1rem',
                             animation: 'fadeSlideUp 0.6s ease-out'
                         }}>
-                        <h2 style={{
+                            <h2 style={{
                                 fontFamily: "'Playfair Display', serif",
-                                fontSize: '2rem', color: 'var(--text-primary)',
-                                marginBottom: '0.8rem', fontWeight: '600'
+                                fontSize: '2.5rem', color: 'var(--text-primary)',
+                                marginBottom: '1rem', fontWeight: '600'
                             }}>
-                                Hello, I'm CookGPT
+                                Hey! I am CookGPT
                             </h2>
                             <p style={{
-                                color: 'var(--text-secondary)', fontSize: '1.05rem',
-                                maxWidth: '480px', lineHeight: '1.7', fontWeight: '300',
-                                marginBottom: '2.5rem'
+                                color: 'var(--text-secondary)', fontSize: '1.1rem',
+                                maxWidth: '550px', lineHeight: '1.7', fontWeight: '300',
+                                marginBottom: '3rem'
                             }}>
-                                What would you like to cook, learn, or discover today?
+                                Ask about cooking, recipes, nutrition & food-related health. I am here to guide your culinary journey.
                             </p>
 
                             {/* Suggestion Chips */}
@@ -468,20 +468,21 @@ const CookGPT = () => {
 
                                 {/* Message Bubble */}
                                 <div style={{
-                                    maxWidth: isUser ? '75%' : '90%', // AI gets more space to read properly
-                                    padding: '1rem 1.4rem',
-                                    borderRadius: isUser ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
+                                    maxWidth: isUser ? '75%' : '85%',
+                                    padding: '1.2rem 1.8rem',
+                                    borderRadius: isUser ? '24px 24px 4px 24px' : '24px 24px 24px 4px',
                                     background: isUser
                                         ? 'linear-gradient(135deg, var(--primary-color), var(--primary-hover))'
                                         : 'var(--surface-color)',
                                     color: isUser ? 'white' : 'var(--text-primary)',
                                     border: isUser ? 'none' : '1px solid var(--border-color)',
-                                    fontSize: '0.95rem',
+                                    fontSize: '1rem',
                                     lineHeight: '1.7',
                                     boxShadow: isUser
-                                        ? '0 4px 15px rgba(184,144,91,0.25)'
+                                        ? '0 10px 25px rgba(184, 144, 91, 0.2)'
                                         : 'var(--shadow-sm)',
-                                    wordBreak: 'break-word'
+                                    wordBreak: 'break-word',
+                                    position: 'relative'
                                 }}>
                                     {isUser ? (
                                         <span>{msg.content}</span>

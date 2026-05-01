@@ -600,12 +600,11 @@ Return ONLY a JSON array with 5 recipe objects, no additional text or markdown f
         return self.ai_repo.get_popular_ingredients()
 
     # ──────────── Few-Shot Examples for Conversational AI ─────────────────
-    # We use explicit few-shot examples to force the model into a direct-response format.
     _FEW_SHOT_EXAMPLES = [
         {'role': 'user', 'parts': ["hi"]},
-        {'role': 'model', 'parts': ["Hello! I am CookGPT. How can I help you in the kitchen today?"]},
+        {'role': 'model', 'parts': ["Hey! I am CookGPT. How can I help you today? You can ask me about cooking, recipes, nutrition, or anything food-related!"]},
         {'role': 'user', 'parts': ["what can you do?"]},
-        {'role': 'model', 'parts': ["I can help you find recipes, plan meals, and give you nutrition advice. What are you craving?"]},
+        {'role': 'model', 'parts': ["I'm your personal culinary assistant. I can suggest recipes based on your ingredients, provide step-by-step cooking guides, and offer nutritional advice. What's on your mind?"]},
     ]
 
     @staticmethod
@@ -708,12 +707,15 @@ Return ONLY a JSON array with 5 recipe objects, no additional text or markdown f
     def _get_chat_model(self):
         """Create a GenerativeModel with a strict system instruction."""
         return genai.GenerativeModel(
-            'gemma-4-31b-it',
+            'gemini-1.5-flash', # Using a more stable model name
             system_instruction=(
-                "You are CookGPT, a culinary AI. You are strictly forbidden from outputting "
-                "any internal reasoning, bullet points, asterisks (*), or lists. "
-                "Do not use the words 'User intent', 'Persona', or 'Goal'. "
-                "Respond immediately and directly to the user with no preamble."
+                "You are CookGPT, a world-class professional chef and nutritional expert. "
+                "YOUR CORE RULE: Respond DIRECTLY and ELEGANTLY. "
+                "NEVER output internal reasoning, thought processes, persona descriptions, "
+                "or formatting rules. NEVER start a response with bullet points or asterisks. "
+                "If the user says 'hi' or greets you, respond with: 'Hey! I am CookGPT. "
+                "How can I help you today? You can ask me about cooking, recipes, nutrition, "
+                "or anything food-related!'"
             )
         )
 
