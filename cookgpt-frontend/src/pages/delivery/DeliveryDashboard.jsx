@@ -42,7 +42,7 @@ const DeliveryDashboard = () => {
             const mockLat = (19.0760 + (Math.random() * 0.01)).toFixed(6);
             const mockLng = (72.8777 + (Math.random() * 0.01)).toFixed(6);
 
-            await apiClient.patch(`delivery/${id}/location/`, {
+            await apiClient.put(`delivery/${id}/location/`, {
                 latitude: parseFloat(mockLat),
                 longitude: parseFloat(mockLng)
             });

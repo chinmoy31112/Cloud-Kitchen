@@ -37,8 +37,33 @@ The platform features a **High Society Premium Light Theme**, utilizing elegant 
 ### 3. The Delivery Agent Portal (`/delivery`)
 *   **Mobile-First UX**: Strips away generic navigation for a streamlined, GPS-focused mobile view.
 *   **Dispatch Board**: Automatically pulls dispatched delivery tickets.
-*   **Real-time GPS Simulator**: Agents click "Sync GPS Now" to fire an automated `PATCH` containing lat/long to `/api/v1/delivery/{id}/location/`.
+*   **Real-time GPS Simulator**: Agents click "Sync GPS Now" to fire an automated `PUT` containing lat/long to `/api/v1/delivery/{id}/location/`.
 *   **Finalization**: Swiping "Mark Delivered" triggers `PATCH /api/v1/delivery/{id}/status/`, formally closing the order arc and completing the application loop.
+
+---
+
+## 🔍 Deep Architectural & Component Analysis
+
+Following a detailed line-by-line review of the codebase, here is the technical breakdown of the system components:
+
+### 💼 Domain & Application Service Layers
+Business logic is decoupled from external libraries or database structures:
+*   **Service Interfaces**: Defined in [interfaces](COOKgptAPI/application/interfaces/__init__.py) (e.g., `IOrderService`, `IAIService`) to guarantee a stable API contract.
+*   **Business Logic Realization**: Contained in [services](COOKgptAPI/application/services/__init__.py). For instance, [OrderService](COOKgptAPI/application/services/__init__.py#L145) handles the state machine transitions and triggers [PaymentService](COOKgptAPI/application/services/__init__.py#L224) and [DeliveryService](COOKgptAPI/application/services/__init__.py#L248) events.
+
+### 🗄️ Infrastructure & Django ORM Layer
+The database schemas are isolated within [infrastructure/models](COOKgptAPI/infrastructure/models/__init__.py):
+*   **Relational Schema Mapping**: Core entities such as [MenuItem](COOKgptAPI/infrastructure/models/__init__.py#L76), [CartItem](COOKgptAPI/infrastructure/models/__init__.py#L117), [Payment](COOKgptAPI/infrastructure/models/__init__.py#L201), [Delivery](COOKgptAPI/infrastructure/models/__init__.py#L234), and [KitchenTimer](COOKgptAPI/infrastructure/models/__init__.py#L289) maintain clean foreign key relationships back to [CustomUser](COOKgptAPI/infrastructure/models/__init__.py#L12) and [Order](COOKgptAPI/infrastructure/models/__init__.py#L140).
+*   **Encapsulated Repositories**: Data access methods are defined in [domain/repositories](COOKgptAPI/domain/repositories) and implemented in [infrastructure/repositories](COOKgptAPI/infrastructure/repositories/__init__.py), meaning standard ORM queries do not leak into the business logic.
+
+### 🔐 Security & Token Session Lifecycle
+*   **Stateless Authorization**: Requests are authorized with JWT headers using [IsAuthenticated](COOKgptAPI/presentation/api/permissions.py), [IsCustomer](COOKgptAPI/presentation/api/permissions.py), [IsKitchenAdmin](COOKgptAPI/presentation/api/permissions.py), and [IsDeliveryAgent](COOKgptAPI/presentation/api/permissions.py) decorators.
+*   **Axios Interceptor**: Implemented in [apiClient.js](cookgpt-frontend/src/api/apiClient.js) to append the `Authorization: Bearer <token>` header to all requests. If a `401 Unauthorized` response is returned, the interceptor automatically attempts to rotate tokens via `/auth/refresh/` and retries the failed request seamlessly.
+
+### 🤖 Gemini AI Recipe Curation Engine
+*   **Streaming Responses**: The `ai_chat` view utilizes Django's `StreamingHttpResponse` with SSE (`text/event-stream`) to deliver word-by-word recipe updates.
+*   **Guardrail Sanitization**: Implemented in [AIService._clean_response](COOKgptAPI/application/services/__init__.py#L420) to filter out internal system thoughts and instruct the model to only output content after the `MASTER_CHEF:` separator.
+*   **Offline Matcher**: Uses a local fallback database (`RECIPE_DATABASE`) and ingredient weight calculators when Gemini credentials are unset or the API goes offline.
 
 ---
 
