@@ -200,19 +200,24 @@ const CookGPT = () => {
 
                         if (isTyping) setIsTyping(false);
 
-                        fullText += data + '\n';
-                        
-                        // Update only the last message (the assistant one we created at the start)
-                        setMessages(prev => {
-                            const updated = [...prev];
-                            if (updated.length > 0) {
-                                updated[updated.length - 1] = { 
-                                    ...updated[updated.length - 1], 
-                                    content: fullText.trimEnd() 
-                                };
-                            }
-                            return updated;
-                        });
+                        try {
+                            const parsed = JSON.parse(data);
+                            fullText += parsed.text;
+                            
+                            // Update only the last message (the assistant one we created at the start)
+                            setMessages(prev => {
+                                const updated = [...prev];
+                                if (updated.length > 0) {
+                                    updated[updated.length - 1] = { 
+                                        ...updated[updated.length - 1], 
+                                        content: fullText
+                                    };
+                                }
+                                return updated;
+                            });
+                        } catch (e) {
+                            console.error("Error parsing stream chunk", e);
+                        }
                     }
                 }
             }
@@ -366,7 +371,7 @@ const CookGPT = () => {
                 {messages.length > 0 && (
                     <div style={{
                         display: 'flex', justifyContent: 'flex-end', alignItems: 'center',
-                        padding: '0.8rem 0', borderBottom: '1px solid var(--border-color)',
+                        padding: '1rem 0',
                         flexShrink: 0
                     }}>
                         <button className="clear-btn" onClick={clearChat} style={{
@@ -383,18 +388,19 @@ const CookGPT = () => {
 
                 {/* ── Chat Messages Area ── */}
                 <div ref={chatContainerRef} onScroll={handleScroll} style={{
-                    flex: 1, overflowY: 'auto', padding: '1.5rem 0',
-                    display: 'flex', flexDirection: 'column', gap: '0.3rem'
+                    flex: 1, overflowY: 'auto', padding: '1rem 0 2rem 0',
+                    display: 'flex', flexDirection: 'column', gap: '1rem'
                 }}>
 
-                    {/* Welcome Screen */}
-                    {showWelcome && (
-                        <div style={{
-                            flex: 1, display: 'flex', flexDirection: 'column',
-                            justifyContent: 'center', alignItems: 'center',
-                            textAlign: 'center', padding: '2rem 1rem',
-                            animation: 'fadeSlideUp 0.6s ease-out'
-                        }}>
+                    {/* Welcome Screen & Recommendations (Always at top) */}
+                    <div style={{
+                        display: 'flex', flexDirection: 'column',
+                        justifyContent: 'center', alignItems: 'center',
+                        textAlign: 'center', padding: '2rem 1rem',
+                        animation: 'fadeSlideUp 0.6s ease-out',
+                        flexShrink: 0,
+                        ...(messages.length === 0 ? { flex: 1 } : { marginBottom: '2rem' })
+                    }}>
                             <h2 style={{
                                 fontFamily: "'Playfair Display', serif",
                                 fontSize: '2rem', color: 'var(--text-primary)',
@@ -432,7 +438,7 @@ const CookGPT = () => {
                                 ))}
                             </div>
                         </div>
-                    )}
+
 
                     {/* Chat Messages */}
                     {messages.map((msg, idx) => {
@@ -445,16 +451,6 @@ const CookGPT = () => {
                                 animation: 'fadeSlideUp 0.35s ease-out',
                                 marginBottom: '0.8rem'
                             }}>
-                                {/* AI Avatar */}
-                                {!isUser && (
-                                    <div style={{
-                                        width: '32px', height: '32px', borderRadius: '50%',
-                                        background: 'linear-gradient(135deg, var(--primary-color), var(--primary-hover))',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'white', fontSize: '0.7rem', fontWeight: '700',
-                                        flexShrink: 0, marginTop: '4px'
-                                    }}>AI</div>
-                                )}
 
                                 {/* Message Bubble */}
                                 <div style={{
@@ -491,16 +487,7 @@ const CookGPT = () => {
                                     )}
                                 </div>
 
-                                {isUser && (
-                                    <div style={{
-                                        width: '32px', height: '32px', borderRadius: '50%',
-                                        background: 'var(--bg-color)',
-                                        border: '1px solid var(--border-color)',
-                                        display: 'flex', alignItems: 'center', justifyContent: 'center',
-                                        color: 'var(--text-primary)', fontSize: '0.7rem', fontWeight: '700',
-                                        flexShrink: 0, marginTop: '4px'
-                                    }}>U</div>
-                                )}
+
                             </div>
                         );
                     })}

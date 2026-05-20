@@ -793,15 +793,16 @@ def ai_chat(request):
     def event_stream():
         try:
             for chunk in ai_service.stream_chat(request.user.id, message, history):
-                # SSE format: data: <text>\n\n
-                # Escape newlines inside the chunk for SSE protocol
-                for line in chunk.split('\n'):
-                    yield f"data: {line}\n"
-                yield "\n"  # End of this SSE event
+                # SSE format: data: <json>\n\n
+                import json
+                payload = json.dumps({"text": chunk})
+                yield f"data: {payload}\n\n"
             # Send a final [DONE] signal
             yield "data: [DONE]\n\n"
         except Exception as e:
-            yield f"data: Error: {str(e)}\n\n"
+            import json
+            payload = json.dumps({"text": f"Error: {str(e)}"})
+            yield f"data: {payload}\n\n"
             yield "data: [DONE]\n\n"
 
     from django.http import StreamingHttpResponse
